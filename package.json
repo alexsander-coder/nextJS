@@ -9,14 +9,27 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.3.2",
+    "@ignite-ui/react": "^2.2.4",
+    "@prisma/client": "^5.5.2",
     "@types/node": "20.8.9",
     "@types/react": "18.2.33",
     "@types/react-dom": "18.2.14",
+    "axios": "^1.6.0",
     "eslint": "8.52.0",
     "eslint-config-next": "14.0.0",
     "next": "14.0.0",
+    "next-auth": "^4.24.4",
+    "nookies": "^2.5.2",
+    "phosphor-react": "^1.4.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "typescript": "5.2.2"
+    "react-hook-form": "^7.47.0",
+    "typescript": "5.2.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/cookie": "^0.5.3",
+    "prisma": "^5.5.2"
   }
 }
