@@ -1,21 +1,54 @@
 import { Button, Checkbox, Heading, MultiStep, Text, TextInput } from "@ignite-ui/react";
 import { Container, Header } from "../styles";
-import { IntervalBox, IntervalDay, IntervalInputs, IntervalItem, IntervalsContainer } from "./style";
+import { FormError, IntervalBox, IntervalDay, IntervalInputs, IntervalItem, IntervalsContainer } from "./style";
 import { ArrowRight } from "phosphor-react";
 import { z } from "zod";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { getWeekDays } from "../../../utils/get-week-days";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { convertTimeStringToMinutes } from "../../../utils/convert-time-string-to-minutes";
+import { api } from "../../../lib/axios";
 
 
-
+//a minha mensagem de erro onde eu defino em refine dentro do meu timeIntervalsFormSchema não está sendo exibida na tela, veja meu código completo abaixo: 
 const timeIntervalsFormSchema = z.object({
-
+  intervals: z.array(z.object({
+    weekDay: z.number().min(0).max(6),
+    enabled: z.boolean(),
+    startTime: z.string(),
+    endTime: z.string(),
+  }),
+  )
+    .length(7)
+    .transform((intervals) => intervals.filter((interval) => interval.enabled))
+    .refine(intervals => intervals.length > 0, {
+      message: 'Você precisa selecionar pelo menos um dia da semana!'
+    })
+    .transform(intervals => {
+      return intervals.map(interval => {
+        return {
+          weekDay: interval.weekDay,
+          startTimeInMinutes: convertTimeStringToMinutes(interval.startTime),
+          endTimeInMinutes: convertTimeStringToMinutes(interval.endTime),
+        }
+      })
+    })
+    .refine(intervals => {
+      return intervals.every(interval => interval.endTimeInMinutes - 60 >= interval.startTimeInMinutes,)
+    }, {
+      message: 'O horário de término deve ser pelo menos 1h distante do inicio.'
+    },
+    )
 })
+
+type TimeIntervalsFormInput = z.input<typeof timeIntervalsFormSchema>
+type TimeIntervalsFormOutput = z.output<typeof timeIntervalsFormSchema>
 
 export default function TimeIntervals() {
   const {
     register, handleSubmit, control, watch, formState: { isSubmitting, errors },
-  } = useForm({
+  } = useForm<TimeIntervalsFormInput>({
+    resolver: zodResolver(timeIntervalsFormSchema),
     defaultValues: {
       intervals: [
         { weekDay: 0, enabled: false, startTime: '08:00', endTime: '18:00' },
@@ -34,8 +67,20 @@ export default function TimeIntervals() {
 
   const intervals = watch('intervals')
 
-  async function handleSetTimeIntervals() {
+  async function handleSetTimeIntervals(data: any) {
+    const { intervals } = data as TimeIntervalsFormOutput;
+    // Converta os dados para o formato desejado (TimeIntervalsFormOutput)
+    // const convertedData: TimeIntervalsFormOutput = {
+    //   intervals: data.intervals.map((interval) => ({
+    //     weekDay: interval.weekDay,
+    //     startTimeInMinutes: convertTimeStringToMinutes(interval.startTime),
+    //     endTimeInMinutes: convertTimeStringToMinutes(interval.endTime),
+    //   })),
+    // };
 
+    await api.post('/users/time-intervals', {
+      intervals,
+    })
   }
 
   return (
@@ -53,9 +98,6 @@ export default function TimeIntervals() {
           {fields.map((field: any, index) => {
             return (
               <IntervalItem key={field.id}>
-                <IntervalDay>
-                  <Text>{weekDays[field.weekDay]}</Text>
-                </IntervalDay>
                 <Controller
                   name={`intervals.${index}.enabled`}
                   control={control}
@@ -71,6 +113,9 @@ export default function TimeIntervals() {
                     )
                   }}
                 />
+                <IntervalDay>
+                  <Text>{weekDays[field.weekDay]}</Text>
+                </IntervalDay>
                 <IntervalInputs>
                   <TextInput
                     size="sm"
@@ -94,7 +139,11 @@ export default function TimeIntervals() {
           })}
         </IntervalsContainer>
 
-        <Button type="submit">
+        {errors.intervals?.root?.message && (
+          <FormError size="sm">{errors.intervals.root.message}</FormError>
+        )}
+
+        <Button type="submit" disabled={isSubmitting}>
           Próximo passo
           <ArrowRight />
         </Button>
